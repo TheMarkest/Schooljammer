@@ -1,0 +1,41 @@
+from subprocess import Popen, PIPE, call 
+import csv 
+import os 
+import time
+
+# Подготовительные операции:
+# 1 создать временную директорию
+# 2 перевести адаптер в мон режим
+# 3 проверить наличие aircrack
+# основные операции
+# 1 старт амрдампа
+# 2 стоп аирдампа
+# 3 анализ аирдампа
+# 4 глужение до 5 целей одновременно
+
+#OLD FILES REMOVE
+def delairodumpfiles(path):
+   
+    delfile(path + '-01.cap')
+    delfile(path + '-01.csv')
+    delfile(path + '-01.kismet.csv')
+    delfile(path + '-01.kismet.netxml')
+
+def delfile(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    
+delairodumpfiles('/home/pi/jammer')
+monmode=['airmon-ng','start','wlan1']
+dump=['airodump-ng','-a','-w','/home/pi/jammer','wlan1mon']
+monproc=Popen(monmode)
+
+startofscan=time.time()
+dumpproc=Popen(dump)
+while(dumpproc.poll()==None)
+    if((time.time()-startofscan)>=30)
+        dumpproc.kill()
+exit()
+
